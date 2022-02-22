@@ -1,5 +1,5 @@
-module gitlab.com/edsonmichaque/tryr
+module gitlab.com/edsonmichaque/go-retry
 
 go 1.17
 
-replace gitlab.com/edsonmichaque/tryr => ./
+replace gitlab.com/edsonmichaque/go-retry => ./
