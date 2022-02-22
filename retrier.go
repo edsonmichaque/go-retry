@@ -18,31 +18,31 @@ func New(opts ...Option) Retrier {
 
 // Retrier
 type Retrier struct {
-	jitter  Jitter
-	backoff Interval
-	timeout time.Duration
-	retries int
-	delay   time.Duration
+	jitter       Jitter
+	backoff      Interval
+	deadline     time.Duration
+	maxRetries   int
+	initialDelay time.Duration
 }
 
 // WithDeadline
 func WithDeadline(d time.Duration) Option {
 	return func(t *Retrier) {
-		t.timeout = d
+		t.deadline = d
 	}
 }
 
 // WithDelay
 func WithDelay(d time.Duration) Option {
 	return func(t *Retrier) {
-		t.delay = d
+		t.initialDelay = d
 	}
 }
 
 // WithRetries
 func WithRetries(r int) Option {
 	return func(t *Retrier) {
-		t.retries = r
+		t.maxRetries = r
 	}
 }
 
