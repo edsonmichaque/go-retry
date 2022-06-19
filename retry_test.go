@@ -1,43 +1,26 @@
 package retry_test
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"gitlab.com/edsonmichaque/go-retry"
+	"gitlab.com/edsonmichaque/go-retry/exponential"
 )
 
-func TestRetry(t *testing.T) {
+func Test(t *testing.T) {
+	var p retry.Policy
+	p = exponential.NewPolicy(
+		exponential.WithDeadline(5 * time.Second),
+	)
 
-	tcases := map[string]struct {
-		interval retry.Interval
-		deadline time.Duration
-		retries  int
-		jitter   int
-	}{
-		"binary backoff": {
-			interval: retry.Binary(),
-		},
-		"linear backoff": {
-			interval: retry.Binary(),
-		},
-	}
+	p = retry.WithInitialDelay(p, 5*time.Second)
 
-	for tname, tcase := range tcases {
-		t.Run(tname, func(t *testing.T) {
-			r := retry.New(
-				retry.WithInterval(tcase.interval),
-				retry.WithDeadline(tcase.deadline),
-				retry.WithJitter(tcase.jitter),
-				retry.WithRetries(tcase.retries),
-			)
+	r := retry.New(p)
 
-			_ = r.Retry(func(attempts int) error {
-				t.Log("attempt: ", attempts)
+	res := r.Do(func(int) error {
+		return nil
+	})
 
-				return errors.New("s")
-			})
-		})
-	}
+	_ = res
 }

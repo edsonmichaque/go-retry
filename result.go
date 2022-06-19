@@ -2,8 +2,7 @@ package retry
 
 import "time"
 
-// Report
-type Report struct {
+type Result struct {
 	TotalAttempts int
 	TotalDuration time.Duration
 	Success       bool
