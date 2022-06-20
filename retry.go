@@ -1,54 +1,81 @@
 package retry
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
-func New(p Policy) Retryer {
+func New(p Delayer) Retryer {
 	return Retryer{
-		p: p,
+		delayer: p,
 	}
+}
+
+type Delayer interface {
+	Delay(int) time.Duration
+}
+
+type AttemptsLimiter interface {
+	MaxAttempts() int
+}
+
+type TimeLimiter interface {
+	Deadline() time.Duration
 }
 
 type Retryer struct {
-	maxAttempts int
-	p           Policy
+	delayer Delayer
 }
 
-func (r Retryer) Do(actionFunc func(sequence int) error) Result {
-	startedAt := time.Now()
+func (r Retryer) Do(callback func(sequence int) error) Result {
+	startingTime := time.Now()
 
-	mustRetry := true
+	retry := true
 
-	var totalAttempts int
-	for mustRetry && totalAttempts < r.p.MaxAttempts() && time.Since(startedAt) < r.p.Deadline() {
-		waitFor := r.p.Delay(totalAttempts)
-
-		if waitFor > 0 {
-			time.Sleep(time.Duration(waitFor))
-		}
-
-		totalAttempts += 1
-
-		if err := actionFunc(totalAttempts); err == nil {
-			mustRetry = false
-		}
+	maxAttempts := math.MaxInt
+	if attemptsLimiter, ok := r.delayer.(AttemptsLimiter); ok {
+		maxAttempts = attemptsLimiter.MaxAttempts()
 	}
+
+	deadline := time.Minute
+	if timeLimiter, ok := r.delayer.(TimeLimiter); ok {
+		deadline = timeLimiter.Deadline()
+	}
+
+	var attempts int
+	for retry && attempts < maxAttempts && time.Since(startingTime) < deadline {
+		delay := r.delayer.Delay(attempts)
+
+		if delay > 0 {
+			time.Sleep(time.Duration(delay))
+		}
+
+		if err := callback(attempts); err == nil {
+			retry = false
+		}
+
+		attempts += 1
+
+	}
+
+	duration := time.Since(startingTime)
 
 	return Result{
-		TotalAttempts: totalAttempts,
-		TotalDuration: time.Since(startedAt),
-		Success:       !mustRetry,
+		Attempts: attempts,
+		Duration: duration,
+		Success:  !retry,
 	}
 }
 
-func WithInitialDelay(p Policy, d time.Duration) Policy {
+func WithInitialDelay(p Delayer, d time.Duration) Delayer {
 	return initialDelay{
-		Policy: p,
-		delay:  d,
+		Delayer: p,
+		delay:   d,
 	}
 }
 
 type initialDelay struct {
-	Policy
+	Delayer
 	delay time.Duration
 }
 
@@ -57,18 +84,18 @@ func (w initialDelay) Delay(attempt int) time.Duration {
 		return w.delay
 	}
 
-	return w.Policy.Delay(attempt)
+	return w.Delayer.Delay(attempt)
 }
 
-func WithMaxAttempts(p Policy, attempts int) Policy {
+func WithMaxAttempts(p Delayer, attempts int) Delayer {
 	return maxAttempts{
-		Policy:   p,
+		Delayer:  p,
 		attempts: attempts,
 	}
 }
 
 type maxAttempts struct {
-	Policy
+	Delayer
 	attempts int
 }
 
