@@ -1,18 +1,32 @@
 package retry_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"gitlab.com/edsonmichaque/go-retry"
 )
 
-func Test(t *testing.T) {
+func Test32(t *testing.T) {
 
-	r := retry.New(retry.WithMaxAttempts(retry.WithInitialDelay(retry.NewExponentialBackoff(100*time.Millisecond), 5*time.Millisecond), 10))
+	var d retry.Backoff
 
-	res := r.Do(func(int) error {
-		return nil
+	d = retry.NewExponentialBackoff(1000 * time.Millisecond)
+	d = retry.WithInitialDelay(d, 5*time.Second)
+	d = retry.WithDeadline(d, 60*time.Second)
+	d = retry.WithJitter(d)
+	d = retry.WithMaxAttempts(d, 20)
+
+	r := retry.New(d)
+	var attempt int
+	res := r.Do(func(a int) error {
+		t.Logf("attempt %d", attempt+1)
+
+		attempt += 1
+		time.Sleep(100 * time.Millisecond)
+
+		return errors.New("error")
 	})
 
 	_ = res

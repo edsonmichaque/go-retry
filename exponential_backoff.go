@@ -1,18 +1,17 @@
 package retry
 
 import (
-	"math"
 	"time"
 )
 
 func NewExponentialBackoff(initial time.Duration) ExponentialBackoff {
 	return ExponentialBackoff{
-		Initial: initial,
+		factor: initial,
 	}
 }
 
 type ExponentialBackoff struct {
-	Initial time.Duration
+	factor time.Duration
 }
 
 func (d ExponentialBackoff) Delay(attempts int) time.Duration {
@@ -20,5 +19,5 @@ func (d ExponentialBackoff) Delay(attempts int) time.Duration {
 		return 0
 	}
 
-	return time.Duration(int(math.Pow(2, float64(attempts-1)))) * d.Initial
+	return (1 << (attempts - 1)) * d.factor
 }
