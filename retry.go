@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func New(p Delayer) Retryer {
-	return Retryer{
+func New(p Retryer) Retry {
+	return Retry{
 		delayer: p,
 	}
 }
 
-type Delayer interface {
+type Retryer interface {
 	Delay(int) time.Duration
 }
 
@@ -19,27 +19,27 @@ type AttemptsLimiter interface {
 	MaxAttempts() int
 }
 
-type TimeLimiter interface {
+type DeadlineLimiter interface {
 	Deadline() time.Duration
 }
 
-type Retryer struct {
-	delayer Delayer
+type Retry struct {
+	delayer Retryer
 }
 
-func (r Retryer) Do(callback func(sequence int) error) Result {
+func (r Retry) Do(callback func(sequence int) error) Result {
 	startingTime := time.Now()
 
 	retry := true
 
 	maxAttempts := math.MaxInt
-	if attemptsLimiter, ok := r.delayer.(AttemptsLimiter); ok {
-		maxAttempts = attemptsLimiter.MaxAttempts()
+	if limiter, ok := r.delayer.(AttemptsLimiter); ok {
+		maxAttempts = limiter.MaxAttempts()
 	}
 
-	deadline := time.Minute
-	if timeLimiter, ok := r.delayer.(TimeLimiter); ok {
-		deadline = timeLimiter.Deadline()
+	var deadline time.Duration = 1<<61 - 1
+	if limiter, ok := r.delayer.(DeadlineLimiter); ok {
+		deadline = limiter.Deadline()
 	}
 
 	var attempts int
@@ -55,7 +55,6 @@ func (r Retryer) Do(callback func(sequence int) error) Result {
 		}
 
 		attempts += 1
-
 	}
 
 	duration := time.Since(startingTime)
@@ -67,15 +66,15 @@ func (r Retryer) Do(callback func(sequence int) error) Result {
 	}
 }
 
-func WithInitialDelay(p Delayer, d time.Duration) Delayer {
+func WithInitialDelay(p Retryer, d time.Duration) Retryer {
 	return initialDelay{
-		Delayer: p,
+		Retryer: p,
 		delay:   d,
 	}
 }
 
 type initialDelay struct {
-	Delayer
+	Retryer
 	delay time.Duration
 }
 
@@ -84,18 +83,18 @@ func (w initialDelay) Delay(attempt int) time.Duration {
 		return w.delay
 	}
 
-	return w.Delayer.Delay(attempt)
+	return w.Retryer.Delay(attempt)
 }
 
-func WithMaxAttempts(p Delayer, attempts int) Delayer {
+func WithMaxAttempts(p Retryer, attempts int) Retryer {
 	return maxAttempts{
-		Delayer:  p,
+		Retryer:  p,
 		attempts: attempts,
 	}
 }
 
 type maxAttempts struct {
-	Delayer
+	Retryer
 	attempts int
 }
 
