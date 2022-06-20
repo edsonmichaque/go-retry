@@ -5,17 +5,17 @@ import (
 	"time"
 )
 
-func NewExponential(initial time.Duration) Exponential {
-	return Exponential{
+func NewExponentialBackoff(initial time.Duration) ExponentialBackoff {
+	return ExponentialBackoff{
 		Initial: initial,
 	}
 }
 
-type Exponential struct {
+type ExponentialBackoff struct {
 	Initial time.Duration
 }
 
-func (d Exponential) Delay(attempts int) time.Duration {
+func (d ExponentialBackoff) Delay(attempts int) time.Duration {
 	if attempts == 0 {
 		return 0
 	}

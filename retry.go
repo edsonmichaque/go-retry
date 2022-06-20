@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func New(p Retryer) Retry {
+func New(p Backoff) Retry {
 	return Retry{
 		delayer: p,
 	}
 }
 
-type Retryer interface {
+type Backoff interface {
 	Delay(int) time.Duration
 }
 
@@ -24,7 +24,7 @@ type DeadlineLimiter interface {
 }
 
 type Retry struct {
-	delayer Retryer
+	delayer Backoff
 }
 
 func (r Retry) Do(callback func(sequence int) error) Result {
@@ -66,15 +66,15 @@ func (r Retry) Do(callback func(sequence int) error) Result {
 	}
 }
 
-func WithInitialDelay(p Retryer, d time.Duration) Retryer {
+func WithInitialDelay(p Backoff, d time.Duration) Backoff {
 	return initialDelay{
-		Retryer: p,
+		Backoff: p,
 		delay:   d,
 	}
 }
 
 type initialDelay struct {
-	Retryer
+	Backoff
 	delay time.Duration
 }
 
@@ -83,18 +83,18 @@ func (w initialDelay) Delay(attempt int) time.Duration {
 		return w.delay
 	}
 
-	return w.Retryer.Delay(attempt)
+	return w.Backoff.Delay(attempt)
 }
 
-func WithMaxAttempts(p Retryer, attempts int) Retryer {
+func WithMaxAttempts(p Backoff, attempts int) Backoff {
 	return maxAttempts{
-		Retryer:  p,
+		Backoff:  p,
 		attempts: attempts,
 	}
 }
 
 type maxAttempts struct {
-	Retryer
+	Backoff
 	attempts int
 }
 
